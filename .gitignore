@@ -15,9 +15,11 @@ env/
 # uv
 .uv/
 
-# Data files (large IMDb datasets)
-data/*.tsv
-data/*.gz
+# MovieLens raw files (auto-downloaded if missing, ~1MB)
+data/ml-latest-small.zip
+
+# User ratings (personal data — not committed)
+data/my_ratings.csv
 
 # Jupyter checkpoints
 .ipynb_checkpoints/

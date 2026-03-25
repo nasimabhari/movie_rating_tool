@@ -9,72 +9,62 @@ from datetime import date
 
 class Movie:
     """
-    Represents a movie with its IMDb metadata.
+    Represents a movie from the MovieLens dataset.
 
     Attributes:
-        imdb_id   : unique IMDb identifier (e.g. "tt0111161")
-        title     : movie title
-        year      : release year
-        genres    : a SET of genre strings (e.g. {"Drama", "Crime"})
-        imdb_rating: average IMDb rating (float, 0.0–10.0)
-        num_votes : number of IMDb votes
+        movie_id     : unique MovieLens integer ID
+        title        : movie title
+        year         : release year
+        genres       : a SET of genre strings (e.g. {"Drama", "Crime"})
+        online_rating: mean community rating scaled to 0–10
+        num_votes    : number of community ratings
     """
 
     def __init__(
         self,
-        imdb_id: str,
+        movie_id: int,
         title: str,
         year: int,
         genres: set[str],
-        imdb_rating: float,
+        online_rating: float,
         num_votes: int,
     ):
-        # Basic attributes (variables & types)
-        self.imdb_id: str = imdb_id
+        self.movie_id: int = movie_id
         self.title: str = title
         self.year: int = year
         self.genres: set[str] = genres
-        self.imdb_rating: float = imdb_rating
+        self.online_rating: float = online_rating
         self.num_votes: int = num_votes
 
     def __repr__(self) -> str:
         return (
             f"Movie(title={self.title!r}, year={self.year}, "
-            f"imdb={self.imdb_rating}, genres={self.genres})"
+            f"rating={self.online_rating}, genres={self.genres})"
         )
 
     def __eq__(self, other: object) -> bool:
-        """Two movies are equal if they share the same IMDb ID."""
         if not isinstance(other, Movie):
             return False
-        return self.imdb_id == other.imdb_id
+        return self.movie_id == other.movie_id
 
     def to_dict(self) -> dict:
-        """
-        Convert the Movie to a plain dictionary.
-        Useful for saving to CSV / JSON later.
-        """
         return {
-            "imdb_id": self.imdb_id,
+            "movie_id": self.movie_id,
             "title": self.title,
             "year": self.year,
             "genres": ",".join(sorted(self.genres)),
-            "imdb_rating": self.imdb_rating,
+            "online_rating": self.online_rating,
             "num_votes": self.num_votes,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "Movie":
-        """
-        Create a Movie from a plain dictionary.
-        Used when loading data back from CSV / JSON.
-        """
         return cls(
-            imdb_id=data["imdb_id"],
+            movie_id=int(data["movie_id"]),
             title=data["title"],
             year=int(data["year"]),
             genres=set(data["genres"].split(",")) if data["genres"] else set(),
-            imdb_rating=float(data["imdb_rating"]),
+            online_rating=float(data["online_rating"]),
             num_votes=int(data["num_votes"]),
         )
 
@@ -83,10 +73,10 @@ class Movie:
 
 class UserRating:
     """
-    Represents a personal rating that the user gives to a movie.
+    Represents a personal rating given by the user to a movie.
 
     Attributes:
-        imdb_id   : links to a Movie
+        movie_id  : links to a Movie (integer MovieLens ID)
         title     : movie title (stored for convenience)
         user_score: the user's rating (float, 0.0–10.0)
         review    : optional short text review
@@ -95,7 +85,7 @@ class UserRating:
 
     def __init__(
         self,
-        imdb_id: str,
+        movie_id: int,
         title: str,
         user_score: float,
         review: str = "",
@@ -104,7 +94,7 @@ class UserRating:
         if not (0.0 <= user_score <= 10.0):
             raise ValueError(f"Score must be between 0 and 10, got {user_score}")
 
-        self.imdb_id: str = imdb_id
+        self.movie_id: int = movie_id
         self.title: str = title
         self.user_score: float = round(user_score, 1)
         self.review: str = review
@@ -119,12 +109,12 @@ class UserRating:
         )
 
     def get_date_str(self) -> str:
-        year, month, day = self.rated_on 
+        year, month, day = self.rated_on
         return f"{year}-{month:02d}-{day:02d}"
 
     def to_dict(self) -> dict:
         return {
-            "imdb_id": self.imdb_id,
+            "movie_id": self.movie_id,
             "title": self.title,
             "user_score": self.user_score,
             "review": self.review,
@@ -137,7 +127,7 @@ class UserRating:
         rated_on = date(int(year), int(month), int(day))
 
         return cls(
-            imdb_id=data["imdb_id"],
+            movie_id=int(data["movie_id"]),
             title=data["title"],
             user_score=float(data["user_score"]),
             review=data.get("review", ""),
@@ -152,45 +142,31 @@ class UserRating:
 class RatingCollection:
     """
     Manages all of the user's personal ratings.
-
-    Internally stores ratings in a list and tracks rated IMDb IDs
-    in a set for O(1) duplicate checking.
-
+    Uses a list for storage and a set for fast duplicate checking.
     """
 
     def __init__(self):
         self._ratings: list[UserRating] = []
-
-        self._rated_ids: set[str] = set()
+        self._rated_ids: set[int] = set()   # set of movie_ids already rated
 
     def add(self, rating: UserRating) -> bool:
-        """
-        Add a new UserRating to the collection.
-        Returns True if added, False if this movie was already rated.
-        """
-        if rating.imdb_id in self._rated_ids:
-            return False 
-
+        if rating.movie_id in self._rated_ids:
+            return False
         self._ratings.append(rating)
-        self._rated_ids.add(rating.imdb_id)
+        self._rated_ids.add(rating.movie_id)
         return True
 
-    def remove(self, imdb_id: str) -> bool:
-        """
-        Remove a rating by IMDb ID.
-        Returns True if removed, False if not found.
-        """
+    def remove(self, movie_id: int) -> bool:
         for i, r in enumerate(self._ratings):
-            if r.imdb_id == imdb_id:
+            if r.movie_id == movie_id:
                 self._ratings.pop(i)
-                self._rated_ids.discard(imdb_id)
+                self._rated_ids.discard(movie_id)
                 return True
         return False
 
-    def get(self, imdb_id: str) -> UserRating | None:
-        """Fetch a single rating by IMDb ID. Returns None if not found."""
+    def get(self, movie_id: int) -> UserRating | None:
         for r in self._ratings:
-            if r.imdb_id == imdb_id:
+            if r.movie_id == movie_id:
                 return r
         return None
 
@@ -200,18 +176,11 @@ class RatingCollection:
     def count(self) -> int:
         return len(self._ratings)
 
-    def has(self, imdb_id: str) -> bool:
-        return imdb_id in self._rated_ids
+    def has(self, movie_id: int) -> bool:
+        return movie_id in self._rated_ids
 
     def get_all_genres(self) -> set[str]:
-        """
-        Return a set of all unique genres the user has rated.
-        Demonstrates: set union across multiple sets.
-        """
         all_genres: set[str] = set()
-        for r in self._ratings:
-            # We'll enrich this from Movie data later. for now check review
-            pass
         return all_genres
 
     def to_list_of_dicts(self) -> list[dict]:
