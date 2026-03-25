@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "movie-rating-tool"
+version = "0.1.0"
+description = "A tool to rate movies, compare with IMDb ratings, and get recommendations."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.26",
+    "matplotlib>=3.7",
+    "seaborn>=0.12",
+    "requests>=2.31",
+    "rich>=13.0",
+]
+
+[project.scripts]
+movie-rating-tool = "movie_rating_tool.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/movie_rating_tool"]
