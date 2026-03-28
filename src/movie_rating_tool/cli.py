@@ -272,7 +272,7 @@ def cmd_list() -> None:
             f"[bold green]{rating.user_score}/10[/bold green]",
             label,
             rating.get_date_str(),
-            rating.review or "—",
+            rating.review if isinstance(rating.review, str) and rating.review.strip() else "—",
         )
 
     console.print(table)
